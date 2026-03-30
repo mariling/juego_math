@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NeuroTrain - Brain Gymnastics</title>
+    <style>
+        :root {
+            --primary: #4f46e5;
+            --success: #10b981;
+            --danger: #ef4444;
+            --bg: #f3f4f6;
+            --card: #ffffff;
+        }
+
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background-color: var(--bg);
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        /* Navigation */
+        nav {
+            background: var(--primary);
+            width: 100%;
+            padding: 1rem;
+            color: white;
+            text-align: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .container {
+            max-width: 800px;
+            width: 90%;
+            margin: 2rem auto;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .card {
+            background: var(--card);
+            padding: 1.5rem;
+            border-radius: 1rem;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+            text-align: center;
+            transition: transform 0.2s;
+        }
+
+        .card:hover { transform: translateY(-5px); }
+
+        /* Game Box */
+        .game-box {
+            background: var(--card);
+            padding: 2rem;
+            border-radius: 1.5rem;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            text-align: center;
+            display: none;
+        }
+
+        .active { display: block; }
+
+        .btn {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 0.8rem 1.5rem;
+            border-radius: 0.5rem;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: bold;
+            margin: 0.5rem;
+        }
+
+        .btn-success { background: var(--success); }
+
+        input {
+            font-size: 1.5rem;
+            padding: 0.5rem;
+            width: 140px;
+            text-align: center;
+            border: 2px solid #ddd;
+            border-radius: 0.5rem;
+            margin: 1rem;
+        }
+
+        /* Stats Panel */
+        .stats-panel {
+            margin-top: 2rem;
+            background: #e5e7eb;
+            padding: 1.5rem;
+            border-radius: 1rem;
+        }
+
+        .trend-up { color: var(--success); font-weight: bold; }
+        .trend-down { color: var(--danger); font-weight: bold; }
+
+        #display-area { font-size: 3rem; font-weight: bold; margin: 1.5rem 0; color: #1f2937; }
+        .hint { color: #6b7280; font-style: italic; font-size: 0.9rem; }
+        #feedback { font-weight: bold; height: 1.2rem; margin-bottom: 1rem; }
+    </style>
+</head>
+<body>
+
+<nav>
+    <h1>NeuroTrain 🧠</h1>
+</nav>
+
+<div class="container">
+    <!-- Main Menu -->
+    <div id="menu">
+        <div class="grid">
+            <div class="card">
+                <h3>🔢 Mental Math</h3>
+                <p>Improve speed with basic operations.</p>
+                <button class="btn" onclick="initGame('math')">Play</button>
+            </div>
+            <div class="card">
+                <h3>🧩 Logic Series</h3>
+                <p>Find the missing pattern in the sequence.</p>
+                <button class="btn" onclick="initGame('logic')">Play</button>
+            </div>
+            <div class="card">
+                <h3>👁️ Flash Memory</h3>
+                <p>Short-term number retention challenge.</p>
+                <button class="btn" onclick="initGame('memory')">Play</button>
+            </div>
+        </div>
+
+        <div class="stats-panel">
+            <h3>Your Performance (Last Sessions)</h3>
+            <div id="stats-display">No data available yet. Start playing!</div>
+        </div>
+    </div>
+
+    <!-- Game Screen -->
+    <div id="game-screen" class="game-box">
+        <h2 id="game-title">Game</h2>
+        <div id="display-area">---</div>
+        <p id="game-instruction"></p>
+        <input type="number" id="user-input" placeholder="?">
+        <div id="controls">
+            <button class="btn btn-success" id="action-btn" onclick="processAnswer()">Submit</button>
+        </div>
+        <p id="feedback"></p>
+        <button class="btn" style="background:#6b7280" onclick="showMenu()">Back to Menu</button>
+    </div>
+</div>
+
+<script>
+    // --- DATA LOGIC ---
+    let stats = JSON.parse(localStorage.getItem('neuroTrainStats')) || {
+        math: [],
+        logic: [],
+        memory: []
+    };
+
+    function saveScore(type, score) {
+        stats[type].push(score);
+        if(stats[type].length > 5) stats[type].shift(); // Keep last 5 sessions
+        localStorage.setItem('neuroTrainStats', JSON.stringify(stats));
+        renderStats();
+    }
+
+    function renderStats() {
+        const display = document.getElementById('stats-display');
+        let html = '<div style="display:flex; justify-content: space-around; flex-wrap: wrap; gap: 10px;">';
+        
+        let hasData = false;
+        for (let game in stats) {
+            let scores = stats[game];
+            if(scores.length > 0) {
+                hasData = true;
+                let last = scores[scores.length - 1];
+                let prev = scores[scores.length - 2] || last;
+                let trend = '';
+                
+                if (last > prev) trend = '<span class="trend-up">↑ Improved</span>';
+                else if (last < prev) trend = '<span class="trend-down">↓ Dropped</span>';
+                else trend = '<span style="color:#666">→ Stable</span>';
+
+                let icon = game === 'math' ? '🔢' : game === 'logic' ? '🧩' : '👁️';
+                let label = game === 'math' ? 'MATH' : game === 'logic' ? 'LOGIC' : 'MEMORY';
+
+                html += `<div style="background:white; padding:10px; border-radius:8px; min-width:150px; border: 1px solid #ddd">
+                            <strong>${icon} ${label}</strong><br>
+                            Last Score: ${last}<br>
+                            ${trend}
+                         </div>`;
+            }
+        }
+        html += '</div>';
+        display.innerHTML = !hasData ? 'No data available yet. Start playing!' : html;
+    }
+
+    // --- GAME LOGIC ---
+    let currentGame = '';
+    let currentAnswer = 0;
+    let score = 0;
+    let round = 0;
+    const maxRounds = 5;
+
+    function showMenu() {
+        document.getElementById('menu').style.display = 'block';
+        document.getElementById('game-screen').classList.remove('active');
+        renderStats();
+    }
+
+    function initGame(type) {
+        currentGame = type;
+        score = 0;
+        round = 1;
+        document.getElementById('menu').style.display = 'none';
+        document.getElementById('game-screen').classList.add('active');
+        document.getElementById('user-input').style.display = 'inline-block';
+        document.getElementById('controls').style.display = 'block';
+        document.getElementById('feedback').innerText = '';
+        nextRound();
+    }
+
+    function nextRound() {
+        if(round > maxRounds) {
+            endGame();
+            return;
+        }
+
+        const display = document.getElementById('display-area');
+        const instruction = document.getElementById('game-instruction');
+        const input = document.getElementById('user-input');
+        input.value = '';
+        input.focus();
+
+        if(currentGame === 'math') {
+            document.getElementById('game-title').innerText = "Mental Calculation";
+            let a = Math.floor(Math.random() * 20) + 1;
+            let b = Math.floor(Math.random() * 15) + 1;
+            let op = Math.random() > 0.5 ? '+' : '-';
+            currentAnswer = op === '+' ? a + b : a - b;
+            display.innerText = `${a} ${op} ${b}`;
+            instruction.innerText = "Solve the operation:";
+        } 
+        
+        else if(currentGame === 'logic') {
+            document.getElementById('game-title').innerText = "Logic Series";
+            let start = Math.floor(Math.random() * 10);
+            let step = Math.floor(Math.random() * 5) + 2;
+            let series = [start, start + step, start + (step*2)];
+            currentAnswer = start + (step*3);
+            display.innerText = `${series.join(', ')}, ?`;
+            instruction.innerText = "What number follows the sequence?";
+        }
+
+        else if(currentGame === 'memory') {
+            document.getElementById('game-title').innerText = "Flash Memory";
+            let digits = round + 2; // Difficulty increases each round
+            let num = Math.floor(Math.pow(10, digits-1) + Math.random() * 9 * Math.pow(10, digits-1));
+            
+            currentAnswer = num;
+            display.innerText = num;
+            instruction.innerText = "Memorize the number...";
+            input.style.display = 'none';
+            document.getElementById('controls').style.display = 'none';
+
+            let timeToWait = 2000; // 2 seconds to memorize
+            setTimeout(() => {
+                display.innerText = "????";
+                instruction.innerText = "What was the number?";
+                input.style.display = 'inline-block';
+                document.getElementById('controls').style.display = 'block';
+                input.focus();
+            }, timeToWait);
+        }
+    }
+
+    function processAnswer() {
+        const userAnswer = parseInt(document.getElementById('user-input').value);
+        const feedback = document.getElementById('feedback');
+
+        if(userAnswer === currentAnswer) {
+            score += 20;
+            feedback.innerText = "Correct! +20 pts";
+            feedback.style.color = "var(--success)";
+        } else {
+            feedback.innerText = `Wrong. It was ${currentAnswer}`;
+            feedback.style.color = "var(--danger)";
+        }
+
+        round++;
+        setTimeout(nextRound, 1500);
+    }
+
+    function endGame() {
+        document.getElementById('display-area').innerText = `Finished!`;
+        document.getElementById('game-instruction').innerText = `Final Score: ${score}`;
+        document.getElementById('user-input').style.display = 'none';
+        document.getElementById('controls').style.display = 'none';
+        
+        saveScore(currentGame, score);
+
+        setTimeout(() => {
+            showMenu();
+        }, 3000);
+    }
+
+    // Allow Enter key
+    document.getElementById('user-input').addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') processAnswer();
+    });
+
+    // Initialize stats on load
+    renderStats();
+</script>
+
+</body>
+</html>
